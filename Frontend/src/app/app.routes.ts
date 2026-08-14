@@ -11,6 +11,8 @@ export const routes: Routes = [
   { path: '', component: MainLayoutComponent, canActivateChild: [AuthGuard], children: [
     { path: 'dashboard', loadChildren: () => import('./features/dashboard/dashboard.routes').then((routes) => routes.DASHBOARD_ROUTES) },
     { path: 'admin', loadChildren: () => import('./features/admin/admin.routes').then((routes) => routes.ADMIN_ROUTES) },
+    { path: 'proyectos/:proyectoId/versiones-costeo', loadComponent: () => import('./features/costeo/components/costeo-list.component').then(component => component.CosteoListComponent) },
+    { path: 'versiones-costeo/:id', loadComponent: () => import('./features/costeo/components/costeo-detail.component').then(component => component.CosteoDetailComponent) },
     { path: 'proyectos', loadChildren: () => import('./features/proyectos/proyectos.routes').then((routes) => routes.PROYECTOS_ROUTES) },
     { path: 'costeo', loadChildren: () => import('./features/costeo/costeo.routes').then((routes) => routes.COSTEO_ROUTES) },
     { path: 'produccion', loadChildren: () => import('./features/produccion/produccion.routes').then((routes) => routes.PRODUCCION_ROUTES) },
@@ -21,6 +23,7 @@ export const routes: Routes = [
   ] },
   { path: '**', redirectTo: 'auth/login' },
 ];
+
 
 
 
