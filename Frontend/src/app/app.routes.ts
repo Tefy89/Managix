@@ -1,0 +1,26 @@
+﻿import { Routes } from '@angular/router';
+import { AuthGuard } from './core/guards/auth.guard';
+import { AdminGuard } from './core/guards/admin.guard';
+import { AuthLayoutComponent } from './layouts/auth-layout/auth-layout.component';
+import { MainLayoutComponent } from './layouts/main-layout/main-layout.component';
+
+const placeholder = (title: string) => ({ data: { title }, loadChildren: () => import('./features/navigation-placeholder/navigation-placeholder.routes').then((routes) => routes.NAVIGATION_PLACEHOLDER_ROUTES) });
+
+export const routes: Routes = [
+  { path: 'auth', component: AuthLayoutComponent, children: [{ path: 'login', loadChildren: () => import('./features/auth/auth.routes').then((routes) => routes.AUTH_ROUTES) }, { path: '', redirectTo: 'login', pathMatch: 'full' }] },
+  { path: '', component: MainLayoutComponent, canActivateChild: [AuthGuard], children: [
+    { path: 'dashboard', loadChildren: () => import('./features/dashboard/dashboard.routes').then((routes) => routes.DASHBOARD_ROUTES) },
+    { path: 'admin', loadChildren: () => import('./features/admin/admin.routes').then((routes) => routes.ADMIN_ROUTES) },
+    { path: 'proyectos', loadChildren: () => import('./features/proyectos/proyectos.routes').then((routes) => routes.PROYECTOS_ROUTES) },
+    { path: 'costeo', loadChildren: () => import('./features/costeo/costeo.routes').then((routes) => routes.COSTEO_ROUTES) },
+    { path: 'produccion', loadChildren: () => import('./features/produccion/produccion.routes').then((routes) => routes.PRODUCCION_ROUTES) },
+    { path: 'portal', loadChildren: () => import('./features/portal/portal.routes').then((routes) => routes.PORTAL_ROUTES) },
+    { path: 'reportes', loadChildren: () => import('./features/reportes/reportes.routes').then((routes) => routes.REPORTES_ROUTES) },
+    { path: 'usuarios', canActivateChild: [AdminGuard], loadChildren: () => import('./features/usuarios/usuarios.routes').then(r => r.USUARIOS_ROUTES) }, { path: 'catalogos', loadChildren: () => import('./features/catalogos/catalogos.routes').then(r => r.CATALOGOS_ROUTES) }, { path: 'configuracion', canActivateChild: [AdminGuard], loadChildren: () => import('./features/configuracion/configuracion.routes').then(r => r.CONFIGURACION_ROUTES) },
+    { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
+  ] },
+  { path: '**', redirectTo: 'auth/login' },
+];
+
+
+

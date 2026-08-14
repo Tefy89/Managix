@@ -1,0 +1,1 @@
+import { IsNumber, IsOptional, IsString, Max, Min } from 'class-validator'; export class UpdateConfiguracionDto { @IsOptional() @IsString() nombreInstitucion?:string; @IsOptional() @IsNumber() @Min(0) @Max(100) porcentajeManoObraDefecto?:number; @IsOptional() @IsNumber() @Min(0) @Max(100) porcentajeGananciaDefecto?:number; }
