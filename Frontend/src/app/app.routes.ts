@@ -18,11 +18,15 @@ export const routes: Routes = [
     { path: 'produccion', loadChildren: () => import('./features/produccion/produccion.routes').then((routes) => routes.PRODUCCION_ROUTES) },
     { path: 'portal', loadChildren: () => import('./features/portal/portal.routes').then((routes) => routes.PORTAL_ROUTES) },
     { path: 'reportes', loadChildren: () => import('./features/reportes/reportes.routes').then((routes) => routes.REPORTES_ROUTES) },
+    { path: 'ficha-tecnica', ...placeholder('Ficha técnica') },
+    { path: 'auditoria', canActivate: [AdminGuard], ...placeholder('Auditoría') },
     { path: 'usuarios', canActivateChild: [AdminGuard], loadChildren: () => import('./features/usuarios/usuarios.routes').then(r => r.USUARIOS_ROUTES) }, { path: 'catalogos', loadChildren: () => import('./features/catalogos/catalogos.routes').then(r => r.CATALOGOS_ROUTES) }, { path: 'configuracion', canActivateChild: [AdminGuard], loadChildren: () => import('./features/configuracion/configuracion.routes').then(r => r.CONFIGURACION_ROUTES) },
     { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
   ] },
   { path: '**', redirectTo: 'auth/login' },
 ];
+
+
 
 
 
