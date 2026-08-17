@@ -7,9 +7,13 @@ import { AdministracionModule } from './administracion/administracion.module';
 import { CatalogosModule } from './catalogos/catalogos.module';
 import { ProyectosModule } from './proyectos/proyectos.module';
 import { CosteoModule } from './costeo/costeo.module';
+import { ProduccionModule } from './produccion/produccion.module';
+import { NotificacionesModule } from './notificaciones/notificaciones.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-@Module({imports:[ConfigModule.forRoot({isGlobal:true,envFilePath:'.env'}),TypeOrmModule.forRootAsync({inject:[ConfigService],useFactory:databaseConfig}),AuthModule,AdministracionModule,CatalogosModule,ProyectosModule,CosteoModule],controllers:[AppController],providers:[AppService]}) export class AppModule {}
+@Module({imports:[ConfigModule.forRoot({isGlobal:true,envFilePath:'.env'}),TypeOrmModule.forRootAsync({inject:[ConfigService],useFactory:databaseConfig}),AuthModule,AdministracionModule,CatalogosModule,ProyectosModule,CosteoModule,ProduccionModule,NotificacionesModule],controllers:[AppController],providers:[AppService]}) export class AppModule {}
+
+
 
 
 

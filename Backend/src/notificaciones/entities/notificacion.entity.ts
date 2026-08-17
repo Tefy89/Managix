@@ -1,0 +1,5 @@
+﻿import { Column, Entity, PrimaryColumn } from 'typeorm';
+export enum TipoNotificacion { REVISION_ETAPA = 'REVISION_ETAPA', ETAPA_APROBADA = 'ETAPA_APROBADA', ETAPA_OBSERVADA = 'ETAPA_OBSERVADA', ORDEN_PRODUCCION = 'ORDEN_PRODUCCION', VERSION_COSTEO = 'VERSION_COSTEO', PUBLICACION = 'PUBLICACION', SISTEMA = 'SISTEMA' }
+@Entity({ name: 'notificacion' })
+export class Notificacion { @PrimaryColumn({ type: 'bigint' }) id: string; @Column({ name: 'usuario_id', type: 'bigint' }) usuarioId: string; @Column() titulo: string; @Column({ type: 'text' }) mensaje: string; @Column({ type: 'enum', enum: TipoNotificacion, enumName: 'tipo_notificacion' }) tipo: TipoNotificacion; @Column({ name: 'referencia_tipo', type: 'varchar', nullable: true }) referenciaTipo: string | null; @Column({ name: 'referencia_id', type: 'bigint', nullable: true }) referenciaId: string | null; @Column() leida: boolean; @Column({ name: 'fecha_lectura', type: 'timestamptz', nullable: true }) fechaLectura: Date | null; @Column({ name: 'created_at', type: 'timestamptz' }) createdAt: Date; }
+
