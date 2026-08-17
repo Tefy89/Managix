@@ -1,6 +1,5 @@
-﻿<!-- MANAGIX â€” MÃ³dulo Produccion â€” Placeholder (se implementa en su mÃ³dulo correspondiente) -->
-<div class="placeholder">
-  <h2>Produccion</h2>
-  <p>MÃ³dulo en construcciÃ³n â€” MÃ³dulo 0 completado correctamente.</p>
-</div>
-
+﻿<section class="page">
+  <header class="page__header"><div><p class="eyebrow">Proceso académico</p><h1>Producción</h1><p>Consulta y gestiona el proceso de confección de tus prendas.</p></div><button class="refresh" type="button" (click)="cargar()">Actualizar</button></header>
+  <p class="message error" *ngIf="mensaje">{{ mensaje }}</p><p class="loading" *ngIf="cargando">Cargando órdenes de producción…</p>
+  <div class="orders" *ngIf="!cargando"><article class="order-card" *ngFor="let orden of ordenes"><div class="order-card__top"><div><span class="code">{{ orden.codigo }}</span><h2>{{ orden.proyectoNombre }}</h2><p>{{ orden.tipoPrendaNombre }} · Versión {{ orden.numeroVersion }}</p></div><span class="state" [class]="'state '+orden.estado.toLowerCase()">{{ orden.estado }}</span></div><div class="order-card__meta"><span>Etapa: <strong>{{ etapaActual(orden) }}</strong></span><span>Inicio: {{ orden.fechaInicio ? (orden.fechaInicio | date:'dd/MM/yyyy') : 'Pendiente' }}</span><span>Fin: {{ orden.fechaFin ? (orden.fechaFin | date:'dd/MM/yyyy') : '—' }}</span></div><a [routerLink]="['/produccion', orden.id]" class="primary-link">{{ accion(orden) }}</a></article><div class="empty" *ngIf="!ordenes.length"><h2>Aún no tienes órdenes de producción</h2><p>Finaliza una versión de costeo para crear su orden de producción.</p></div></div>
+</section>

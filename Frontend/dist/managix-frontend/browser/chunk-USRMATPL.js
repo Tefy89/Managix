@@ -1,1 +1,0 @@
-import{a as o}from"./chunk-U2WMYKW4.js";import"./chunk-SY4AIBC7.js";import"./chunk-HGYLHALD.js";import"./chunk-VKU75QL5.js";import"./chunk-SJ6AMYVS.js";var n=[{path:"",component:o}];export{n as DASHBOARD_ROUTES};
