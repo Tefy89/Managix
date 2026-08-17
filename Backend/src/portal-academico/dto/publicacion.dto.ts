@@ -1,0 +1,3 @@
+import { IsNotEmpty, IsOptional, IsString, Matches, MaxLength } from 'class-validator';
+export class CreatePublicacionDto { @IsString() @IsNotEmpty() @Matches(/\S/) @MaxLength(250) titulo:string; @IsString() @IsNotEmpty() @Matches(/\S/) contenido:string; @IsOptional() @IsString() @MaxLength(1000) imagenStorageKey?:string|null; }
+export class UpdatePublicacionDto { @IsOptional() @IsString() @IsNotEmpty() @Matches(/\S/) @MaxLength(250) titulo?:string; @IsOptional() @IsString() @IsNotEmpty() @Matches(/\S/) contenido?:string; @IsOptional() @IsString() @MaxLength(1000) imagenStorageKey?:string|null; }

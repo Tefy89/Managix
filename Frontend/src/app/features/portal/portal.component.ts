@@ -1,11 +1,25 @@
-﻿import { Component } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { Component, OnDestroy, OnInit, inject } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
+import { forkJoin } from 'rxjs';
+import { AuthService } from '../../core/services/auth.service';
+import { EstadoPublicacion, PortalAcademicoService, Publicacion } from '../../core/services/portal-academico.service';
 
-@Component({
-  selector: 'app-portal',
-  standalone: true,
-  templateUrl: './portal.component.html',
-  styleUrls: ['./portal.component.scss'],
-})
-export class PortalComponent {}
-
-
+@Component({ selector: 'app-portal', standalone: true, imports: [CommonModule, FormsModule, RouterLink], templateUrl: './portal.component.html', styleUrls: ['./portal.component.scss'] })
+export class PortalComponent implements OnInit, OnDestroy {
+  private readonly portal = inject(PortalAcademicoService); private readonly auth = inject(AuthService);
+  publicaciones: Publicacion[] = []; destacada?: Publicacion; ultimas: Publicacion[] = []; imagenes = new Map<string, string>();
+  busqueda = ''; estado: EstadoPublicacion | '' = ''; vistaDocente: 'PUBLICADAS' | 'MIS' = 'PUBLICADAS'; mostrarFormulario = false; titulo = ''; contenido = ''; archivo?: File; cargando = false; guardando = false; mensaje = ''; error = '';
+  readonly estados: EstadoPublicacion[] = ['BORRADOR', 'PUBLICADA', 'OCULTA', 'ARCHIVADA'];
+  get rol() { return this.auth.user?.rol; } get esDocente() { return this.rol === 'DOCENTE'; } get esAdmin() { return this.rol === 'ADMINISTRADOR'; } get puedeGestionar() { return this.esDocente || this.esAdmin; }
+  ngOnInit(): void { this.cargar(); } ngOnDestroy(): void { this.imagenes.forEach(url => URL.revokeObjectURL(url)); }
+  cargar(): void { this.cargando = true; this.error = ''; if (this.esDocente && this.vistaDocente === 'MIS') { forkJoin(this.estados.map(estado => this.portal.listar({ estado, search: this.busqueda }))).subscribe({ next: grupos => this.recibirPublicaciones(grupos.flat()), error: e => this.recibirError(e) }); return; } const filtros = this.esAdmin ? { search: this.busqueda, ...(this.estado ? { estado: this.estado } : {}) } : { search: this.busqueda }; this.portal.listar(filtros).subscribe({ next: publicaciones => this.recibirPublicaciones(publicaciones), error: e => this.recibirError(e) }); }
+  buscar(): void { this.cargar(); } abrirFormulario(): void { this.mostrarFormulario = true; this.titulo = ''; this.contenido = ''; this.archivo = undefined; this.error = ''; this.mensaje = ''; }
+  seleccionarArchivo(event: Event): void { const archivo = (event.target as HTMLInputElement).files?.[0]; if (!archivo) return; if (!['image/jpeg', 'image/png', 'image/webp'].includes(archivo.type) || archivo.size > 5 * 1024 * 1024) { this.error = 'La imagen debe ser JPG, PNG o WEBP y pesar como máximo 5 MB.'; return; } this.archivo = archivo; this.error = ''; }
+  crear(): void { if (!this.titulo.trim() || !this.contenido.trim()) { this.error = 'Título y contenido son obligatorios.'; return; } this.guardando = true; this.error = ''; this.portal.crear({ titulo: this.titulo.trim(), contenido: this.contenido.trim() }).subscribe({ next: p => { if (!this.archivo) { this.finalizarCreacion(); return; } this.portal.subirImagen(p.id, this.archivo).subscribe({ next: () => this.finalizarCreacion(), error: e => { this.guardando = false; this.error = e.error?.message ?? 'La publicación fue creada, pero no se pudo cargar la imagen.'; this.cargar(); } }); }, error: e => { this.guardando = false; this.error = e.error?.message ?? 'No fue posible crear la publicación.'; } }); }
+  resumen(texto: string, limite = 160): string { const limpio = texto.trim().replace(/\s+/g, ' '); if (limpio.length <= limite) return limpio; const corte = limpio.lastIndexOf(' ', limite); return `${limpio.slice(0, corte > 0 ? corte : limite).trim()}…`; }
+  imagen(id: string): string | undefined { return this.imagenes.get(id); } trackById(_: number, publicacion: Publicacion): string { return publicacion.id; }
+  private recibirPublicaciones(publicaciones: Publicacion[]): void { this.cargando = false; this.publicaciones = [...new Map(publicaciones.map(p => [p.id, p])).values()].sort((a, b) => (b.fecha_publicacion ?? b.created_at).localeCompare(a.fecha_publicacion ?? a.created_at)); this.destacada = this.publicaciones[0]; this.ultimas = this.publicaciones.slice(1); this.publicaciones.forEach(p => this.cargarImagen(p)); }
+  private recibirError(error: { error?: { message?: string } }): void { this.cargando = false; this.error = error.error?.message ?? 'No fue posible cargar las publicaciones.'; } private finalizarCreacion(): void { this.guardando = false; this.mostrarFormulario = false; this.mensaje = 'Publicación creada correctamente.'; if (this.esDocente) this.vistaDocente = 'MIS'; this.cargar(); } private cargarImagen(publicacion: Publicacion): void { if (!publicacion.tieneImagen || this.imagenes.has(publicacion.id)) return; this.portal.imagen(publicacion.id).subscribe({ next: blob => this.imagenes.set(publicacion.id, URL.createObjectURL(blob)) }); }
+}

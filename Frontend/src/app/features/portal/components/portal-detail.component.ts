@@ -1,0 +1,27 @@
+import { CommonModule } from '@angular/common';
+import { Component, OnDestroy, OnInit, inject } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, RouterLink } from '@angular/router';
+import { AuthService } from '../../../core/services/auth.service';
+import { PortalAcademicoService, Publicacion } from '../../../core/services/portal-academico.service';
+
+@Component({ selector: 'app-portal-detail', standalone: true, imports: [CommonModule, FormsModule, RouterLink], templateUrl: './portal-detail.component.html', styleUrls: ['./portal-detail.component.scss'] })
+export class PortalDetailComponent implements OnInit, OnDestroy {
+  private readonly route = inject(ActivatedRoute); private readonly portal = inject(PortalAcademicoService); private readonly auth = inject(AuthService);
+  publicacion?: Publicacion; imagen?: string; relacionadas: Publicacion[] = []; imagenesRelacionadas = new Map<string, string>(); cargando = true; editando = false; titulo = ''; contenido = ''; archivo?: File; mensaje = ''; error = ''; guardando = false;
+  get puedeGestionar(): boolean { const p = this.publicacion; const u = this.auth.user; return !!p && !!u && (u.rol === 'ADMINISTRADOR' || (u.rol === 'DOCENTE' && p.autor?.id === u.id)); }
+  ngOnInit(): void { this.route.paramMap.subscribe(params => this.cargar(params.get('id') ?? '')); }
+  ngOnDestroy(): void { if (this.imagen) URL.revokeObjectURL(this.imagen); this.imagenesRelacionadas.forEach(url => URL.revokeObjectURL(url)); }
+  cargar(id: string): void { this.cargando = true; this.error = ''; this.portal.obtener(id).subscribe({ next: p => { this.publicacion = p; this.titulo = p.titulo; this.contenido = p.contenido; this.cargando = false; this.cargarImagen(p); this.cargarRelacionadas(p.id); }, error: e => { this.cargando = false; this.error = e.error?.message ?? 'No fue posible cargar la publicación.'; } }); }
+  editar(): void { if (!this.publicacion) return; this.editando = true; this.titulo = this.publicacion.titulo; this.contenido = this.publicacion.contenido; this.mensaje = ''; this.error = ''; }
+  guardar(): void { if (!this.publicacion || !this.titulo.trim() || !this.contenido.trim()) { this.error = 'Título y contenido son obligatorios.'; return; } this.guardando = true; this.portal.actualizar(this.publicacion.id, { titulo: this.titulo.trim(), contenido: this.contenido.trim() }).subscribe({ next: p => { this.publicacion = p; this.editando = false; this.guardando = false; this.mensaje = 'Cambios guardados.'; this.cargarImagen(p, true); }, error: e => { this.guardando = false; this.error = e.error?.message ?? 'No fue posible actualizar la publicación.'; } }); }
+  cambiarEstado(accion: 'publicar' | 'ocultar' | 'archivar'): void { if (!this.publicacion || !confirm(`¿Confirmar ${accion} esta publicación?`)) return; this.portal[accion](this.publicacion.id).subscribe({ next: p => { this.publicacion = p; this.mensaje = `Publicación ${accion === 'publicar' ? 'publicada' : accion === 'ocultar' ? 'ocultada' : 'archivada'}.`; }, error: e => this.error = e.error?.message ?? 'No fue posible cambiar el estado.' }); }
+  seleccionarArchivo(event: Event): void { const archivo = (event.target as HTMLInputElement).files?.[0]; if (!archivo) return; if (!['image/jpeg', 'image/png', 'image/webp'].includes(archivo.type) || archivo.size > 5 * 1024 * 1024) { this.error = 'La imagen debe ser JPG, PNG o WEBP y pesar como máximo 5 MB.'; return; } this.archivo = archivo; this.error = ''; }
+  subirImagen(): void { if (!this.publicacion || !this.archivo) return; this.guardando = true; this.portal.subirImagen(this.publicacion.id, this.archivo).subscribe({ next: p => { this.publicacion = p; this.archivo = undefined; this.guardando = false; this.mensaje = 'Imagen actualizada.'; this.cargarImagen(p, true); }, error: e => { this.guardando = false; this.error = e.error?.message ?? 'No fue posible cargar la imagen.'; } }); }
+  eliminarImagen(): void { if (!this.publicacion || !confirm('¿Eliminar la imagen de esta publicación?')) return; this.portal.eliminarImagen(this.publicacion.id).subscribe({ next: () => { if (this.imagen) URL.revokeObjectURL(this.imagen); this.imagen = undefined; this.publicacion = { ...this.publicacion!, tieneImagen: false }; this.mensaje = 'Imagen eliminada.'; }, error: e => this.error = e.error?.message ?? 'No fue posible eliminar la imagen.' }); }
+  parrafos(texto: string): string[] { return texto.split(/\r?\n\s*\r?\n/).map(parrafo => parrafo.trim()).filter(Boolean); }
+  resumen(texto: string): string { const limpio = texto.trim().replace(/\s+/g, ' '); return limpio.length > 112 ? `${limpio.slice(0, limpio.lastIndexOf(' ', 112)).trim()}…` : limpio; }
+  imagenRelacionada(id: string): string | undefined { return this.imagenesRelacionadas.get(id); }
+  private cargarImagen(publicacion: Publicacion, reemplazar = false): void { if (!publicacion.tieneImagen) return; if (this.imagen && !reemplazar) return; this.portal.imagen(publicacion.id).subscribe({ next: blob => { if (this.imagen) URL.revokeObjectURL(this.imagen); this.imagen = URL.createObjectURL(blob); } }); }
+  private cargarRelacionadas(id: string): void { this.portal.listar().subscribe({ next: publicaciones => { this.relacionadas = publicaciones.filter(p => p.id !== id && p.estado === 'PUBLICADA').slice(0, 3); this.relacionadas.forEach(p => { if (p.tieneImagen && !this.imagenesRelacionadas.has(p.id)) this.portal.imagen(p.id).subscribe({ next: blob => this.imagenesRelacionadas.set(p.id, URL.createObjectURL(blob)) }); }); } }); }
+}

@@ -24,7 +24,16 @@ export class MainLayoutComponent implements OnInit {
   ngOnInit(): void { this.cargarNotificaciones(); }
   cargarNotificaciones(): void { this.notificacionesService.contador().subscribe({ next: r => this.noLeidas.set(r.count) }); this.notificacionesService.listar().subscribe({ next: r => this.notificaciones.set(r.slice(0, 5)) }); }
   alternarNotificaciones(): void { this.notificacionesOpen.set(!this.notificacionesOpen()); if (this.notificacionesOpen()) this.cargarNotificaciones(); }
-  leerNotificacion(notificacion: Notificacion): void { if (notificacion.leida) return; this.notificacionesService.leer(notificacion.id).subscribe({ next: () => this.cargarNotificaciones() }); }
+  leerNotificacion(notificacion: Notificacion): void {
+    const abrirReferencia = (): void => {
+      if (notificacion.tipo === 'PUBLICACION' && notificacion.referenciaId) {
+        this.notificacionesOpen.set(false);
+        void this.router.navigate(['/portal', notificacion.referenciaId]);
+      }
+    };
+    if (notificacion.leida) { abrirReferencia(); return; }
+    this.notificacionesService.leer(notificacion.id).subscribe({ next: () => { this.cargarNotificaciones(); abrirReferencia(); } });
+  }
   leerTodas(): void { this.notificacionesService.leerTodas().subscribe({ next: () => this.cargarNotificaciones() }); }
   logout(): void { this.authService.logout(); void this.router.navigate(['/auth/login']); }
   closeMenu(): void { this.menuOpen.set(false); }
