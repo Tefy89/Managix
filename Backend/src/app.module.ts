@@ -10,9 +10,12 @@ import { CosteoModule } from './costeo/costeo.module';
 import { ProduccionModule } from './produccion/produccion.module';
 import { NotificacionesModule } from './notificaciones/notificaciones.module';
 import { PortalAcademicoModule } from './portal-academico/portal-academico.module';
+import { ReportesModule } from './reportes/reportes.module';
+import { FichaDisenoModule } from './ficha-diseno/ficha-diseno.module';
+import { SamModule } from './sam/sam.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-@Module({imports:[ConfigModule.forRoot({isGlobal:true,envFilePath:'.env'}),TypeOrmModule.forRootAsync({inject:[ConfigService],useFactory:databaseConfig}),AuthModule,AdministracionModule,CatalogosModule,ProyectosModule,CosteoModule,ProduccionModule,NotificacionesModule,PortalAcademicoModule],controllers:[AppController],providers:[AppService]}) export class AppModule {}
+@Module({imports:[ConfigModule.forRoot({isGlobal:true,envFilePath:'.env'}),TypeOrmModule.forRootAsync({inject:[ConfigService],useFactory:databaseConfig}),AuthModule,AdministracionModule,CatalogosModule,ProyectosModule,CosteoModule,ProduccionModule,NotificacionesModule,PortalAcademicoModule,ReportesModule,FichaDisenoModule,SamModule],controllers:[AppController],providers:[AppService]}) export class AppModule {}
 
 
 

@@ -1,4 +1,4 @@
-﻿import {
+import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
@@ -19,6 +19,7 @@ import { CreateVersionDto, UpdateVersionDto } from './dto/version.dto';
 import { VersionCosteoMedida } from './entities/version-costeo-medida.entity';
 import { VersionCosteoInsumo } from './entities/version-costeo-insumo.entity';
 import { VersionCosteoTela } from './entities/version-costeo-tela.entity';
+import { VersionCosteoOperacionSam } from '../sam/entities/sam.entities';
 import { EstadoVersionCosteo, VersionCosteo } from './entities/version-costeo.entity';
 
 type UsuarioAutenticado = { sub: string; rol: string };
@@ -119,6 +120,7 @@ export class CosteoService {
       const medidas = manager.getRepository(VersionCosteoMedida);
       const telas = manager.getRepository(VersionCosteoTela);
       const insumos = manager.getRepository(VersionCosteoInsumo);
+      const operacionesSam = manager.getRepository(VersionCosteoOperacionSam);
       const fuente = await versiones.findOneBy({ id });
       if (!fuente) throw new NotFoundException('Versión no encontrada.');
       if (fuente.estado !== EstadoVersionCosteo.FINALIZADA) {
@@ -141,10 +143,11 @@ export class CosteoService {
         estado: EstadoVersionCosteo.BORRADOR,
       }));
 
-      const [medidasOrigen, telasOrigen, insumosOrigen] = await Promise.all([
+      const [medidasOrigen, telasOrigen, insumosOrigen, samOrigen] = await Promise.all([
         medidas.findBy({ versionCosteoId: fuente.id }),
         telas.findBy({ versionCosteoId: fuente.id }),
         insumos.findBy({ versionCosteoId: fuente.id }),
+        operacionesSam.findBy({ versionCosteoId: fuente.id }),
       ]);
       let medidaId = Number((await medidas.createQueryBuilder().select('COALESCE(MAX(id),0)', 'id').getRawOne<{ id: string }>())?.id ?? 0);
       for (const linea of medidasOrigen) {
@@ -170,6 +173,8 @@ export class CosteoService {
           subtotal: linea.subtotal, observacion: linea.observacion,
         }));
       }
+      let samId = Number((await operacionesSam.createQueryBuilder().select('COALESCE(MAX(id),0)', 'id').getRawOne<{ id: string }>())?.id ?? 0);
+      for (const linea of samOrigen) { samId += 1; await operacionesSam.save(operacionesSam.create({ id: String(samId), versionCosteoId: nueva.id, operacionSamId: linea.operacionSamId, samAplicado: linea.samAplicado, cantidad: linea.cantidad, subtotalMinutos: linea.subtotalMinutos, observacion: linea.observacion })); }
     });
     await this.audit(usuario.sub, AccionAuditoria.CREAR, nueva.id, `Nueva versión creada a partir de la versión ${id}.`, 'version_costeo', {
       version_padre_id: id,
@@ -478,6 +483,7 @@ export class CosteoService {
   private async recalcularCosteoEnTransaccion(version: VersionCosteo, manager: EntityManager) {
     const telas = manager.getRepository(VersionCosteoTela);
     const insumos = manager.getRepository(VersionCosteoInsumo);
+      const operacionesSam = manager.getRepository(VersionCosteoOperacionSam);
     const versiones = manager.getRepository(VersionCosteo);
     const [sumaTelas, sumaInsumos] = await Promise.all([
       telas.createQueryBuilder('vt').select('COALESCE(SUM(vt.subtotal), 0)', 'subtotal')

@@ -14,7 +14,7 @@ const NAVIGATION: Record<UserRole, NavItem[]> = {
     { label: 'Dashboard', route: '/dashboard', icon: 'grid' }, { label: 'Revisiones', route: '/revisiones', icon: 'grid' }, { label: 'Producción', route: '/produccion', icon: 'grid' }, { label: 'Portal académico', route: '/portal', icon: 'grid' }, { label: 'Reportes', route: '/reportes', icon: 'grid' }, { label: 'Configuración', route: '/configuracion', icon: 'settings' },
   ],
   ESTUDIANTE: [
-    { label: 'Dashboard', route: '/dashboard', icon: 'grid' }, { label: 'Proyectos', route: '/proyectos', icon: 'grid' }, { label: 'Costeo', route: '/costeo', icon: 'grid' }, { label: 'Producción', route: '/produccion', icon: 'grid' }, { label: 'Portal académico', route: '/portal', icon: 'grid' }, { label: 'Reportes', route: '/reportes', icon: 'grid' }, { label: 'Ficha técnica', route: '/ficha-tecnica', icon: 'info' }, { label: 'Configuración', route: '/configuracion', icon: 'settings' },
+    { label: 'Dashboard', route: '/dashboard', icon: 'grid' }, { label: 'Proyectos', route: '/proyectos', icon: 'grid' }, { label: 'Costeo', route: '/costeo', icon: 'grid' }, { label: 'Producción', route: '/produccion', icon: 'grid' }, { label: 'Portal académico', route: '/portal', icon: 'grid' }, { label: 'Reportes', route: '/reportes', icon: 'grid' }, { label: 'Ficha de diseño', route: '/ficha-diseno', icon: 'info' }, { label: 'Configuración', route: '/configuracion', icon: 'settings' },
   ],
 };
 @Component({ selector: 'app-main-layout', standalone: true, imports: [NgFor, NgIf, RouterLink, RouterLinkActive, RouterOutlet], templateUrl: './main-layout.component.html', styleUrls: ['./main-layout.component.scss'] })

@@ -20,6 +20,8 @@ export const routes: Routes = [
     { path: 'revisiones', canActivate: [DocenteGuard], loadChildren: () => import('./features/revisiones/revisiones.routes').then((routes) => routes.REVISIONES_ROUTES) },
     { path: 'portal', loadChildren: () => import('./features/portal/portal.routes').then((routes) => routes.PORTAL_ROUTES) },
     { path: 'reportes', loadChildren: () => import('./features/reportes/reportes.routes').then((routes) => routes.REPORTES_ROUTES) },
+    { path: 'ficha-diseno', loadChildren: () => import('./features/ficha-diseno/ficha-diseno.routes').then((routes) => routes.FICHA_DISENO_ROUTES) },
+    { path: 'proyectos/:proyectoId/ficha-diseno', loadComponent: () => import('./features/ficha-diseno/ficha-diseno.component').then(component => component.FichaDisenoComponent) },
     { path: 'ficha-tecnica', ...placeholder('Ficha técnica') },
     { path: 'auditoria', canActivate: [AdminGuard], ...placeholder('Auditoría') },
     { path: 'usuarios', canActivateChild: [AdminGuard], loadChildren: () => import('./features/usuarios/usuarios.routes').then(r => r.USUARIOS_ROUTES) }, { path: 'catalogos', loadChildren: () => import('./features/catalogos/catalogos.routes').then(r => r.CATALOGOS_ROUTES) }, { path: 'configuracion', canActivateChild: [AdminGuard], loadChildren: () => import('./features/configuracion/configuracion.routes').then(r => r.CONFIGURACION_ROUTES) },

@@ -1,4 +1,4 @@
-﻿import { Injectable } from '@angular/core';
+import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { ApiService } from './api.service';
 
@@ -9,6 +9,9 @@ export interface MedidaConfiguracion { tipo_prenda_medida_id: string; medida_id:
 export interface VersionCosteoMedida extends MedidaConfiguracion { id: string; valor: string | number; }
 export interface VersionCosteoTela { id: string; tela_id: string; codigo: string; nombre: string; cantidad_metros_sugerida: string | number | null; cantidad_metros: string | number; precio_metro_aplicado: string | number; subtotal: string | number; regla_consumo_tela_id: string | null; observacion: string | null; created_at: string; updated_at: string; }
 export interface VersionCosteoInsumo { id: string; insumo_id: string; codigo: string; nombre: string; cantidad: string | number; unidad_medida_aplicada: string; precio_unitario_aplicado: string | number; subtotal: string | number; observacion: string | null; created_at: string; updated_at: string; }
+export interface OperacionSam { id: string; codigo: string; nombre: string; descripcion: string | null; samReferencial: string | number; estado: 'ACTIVO' | 'INACTIVO'; }
+export interface LineaSamVersion { id: string; operacionSamId: string; codigo: string; nombre: string; descripcion: string | null; samAplicado: string | number; cantidad: string | number; subtotalMinutos: string | number; observacion: string | null; createdAt: string; updatedAt: string; }
+export interface SamVersionResponse { operaciones: LineaSamVersion[]; samTotal: string | number; }
 export interface CrearVersion { tipoPrendaId: string; nombre: string; descripcion?: string; }
 export interface ActualizarVersion { nombre?: string; descripcion?: string; porcentajeManoObra?: number; porcentajeGanancia?: number; }
 export interface GuardarMedidas { medidas: Array<{ tipoPrendaMedidaId: number; valor: number }>; }
@@ -16,6 +19,8 @@ export interface CrearTelaVersion { telaId: number; cantidadMetros: number; cant
 export interface ActualizarTelaVersion { cantidadMetros?: number; observacion?: string; }
 export interface CrearInsumoVersion { insumoId: number; cantidad: number; observacion?: string; }
 export interface ActualizarInsumoVersion { cantidad?: number; observacion?: string; }
+export interface CrearLineaSamVersion { operacionSamId: number; cantidad: number; observacion?: string; }
+export interface ActualizarLineaSamVersion { cantidad?: number; observacion?: string; }
 
 @Injectable({ providedIn: 'root' })
 export class CosteoService {
@@ -35,7 +40,12 @@ export class CosteoService {
   agregarInsumo(id: string, body: CrearInsumoVersion): Observable<VersionCosteoInsumo> { return this.api.post(`/versiones-costeo/${id}/insumos`, body); }
   actualizarInsumo(id: string, lineaId: string, body: ActualizarInsumoVersion): Observable<VersionCosteoInsumo> { return this.api.patch(`/versiones-costeo/${id}/insumos/${lineaId}`, body); }
   retirarInsumo(id: string, lineaId: string): Observable<void> { return this.api.delete(`/versiones-costeo/${id}/insumos/${lineaId}`); }
-  finalizar(id: string): Observable<VersionCosteo> { return this.api.post(`/versiones-costeo/${id}/finalizar`, {}); }
+    listarOperacionesSam(params: Record<string, string> = {}): Observable<OperacionSam[]> { return this.api.get('/operaciones-sam', params); }
+  obtenerOperacionesSam(id: string): Observable<SamVersionResponse> { return this.api.get(`/versiones-costeo/${id}/operaciones-sam`); }
+  agregarOperacionSam(id: string, body: CrearLineaSamVersion): Observable<LineaSamVersion> { return this.api.post(`/versiones-costeo/${id}/operaciones-sam`, body); }
+  actualizarOperacionSam(id: string, lineaId: string, body: ActualizarLineaSamVersion): Observable<LineaSamVersion> { return this.api.patch(`/versiones-costeo/${id}/operaciones-sam/${lineaId}`, body); }
+  retirarOperacionSam(id: string, lineaId: string): Observable<void> { return this.api.delete(`/versiones-costeo/${id}/operaciones-sam/${lineaId}`); }
+finalizar(id: string): Observable<VersionCosteo> { return this.api.post(`/versiones-costeo/${id}/finalizar`, {}); }
   cancelar(id: string): Observable<VersionCosteo> { return this.api.post(`/versiones-costeo/${id}/cancelar`, {}); }
   nuevaVersion(id: string): Observable<VersionCosteo> { return this.api.post(`/versiones-costeo/${id}/nueva-version`, {}); }
 }
