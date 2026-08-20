@@ -5,7 +5,6 @@ import { DocenteGuard } from './core/guards/docente.guard';
 import { AuthLayoutComponent } from './layouts/auth-layout/auth-layout.component';
 import { MainLayoutComponent } from './layouts/main-layout/main-layout.component';
 
-const placeholder = (title: string) => ({ data: { title }, loadChildren: () => import('./features/navigation-placeholder/navigation-placeholder.routes').then((routes) => routes.NAVIGATION_PLACEHOLDER_ROUTES) });
 
 export const routes: Routes = [
   { path: 'auth', component: AuthLayoutComponent, children: [{ path: 'login', loadChildren: () => import('./features/auth/auth.routes').then((routes) => routes.AUTH_ROUTES) }, { path: '', redirectTo: 'login', pathMatch: 'full' }] },
