@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
@@ -9,58 +9,6 @@ import { Notificacion, NotificacionesService } from '../../core/services/notific
 import { PortalAcademicoService, Publicacion } from '../../core/services/portal-academico.service';
 import { CatalogosService } from '../../core/services/catalogos.service';
 import { AdministracionService } from '../../core/services/administracion.service';
-
-interface VersionReciente extends VersionCosteo { proyectoNombre: string; }
-
-@Component({
-  selector: 'app-dashboard', standalone: true, imports: [CommonModule, RouterLink],
-  templateUrl: './dashboard.component.html', styleUrls: ['./dashboard.component.scss'],
-})
-export class DashboardComponent implements OnInit {
-  private readonly auth = inject(AuthService); private readonly proyectosService = inject(ProyectosService);
-  private readonly costeo = inject(CosteoService); private readonly produccion = inject(ProduccionService);
-  private readonly notificacionesService = inject(NotificacionesService); private readonly portal = inject(PortalAcademicoService);
-  private readonly catalogos = inject(CatalogosService); private readonly administracion = inject(AdministracionService);
-
-  readonly user = this.auth.user; proyectos: Proyecto[] = []; versiones: VersionReciente[] = []; ordenes: OrdenProduccion[] = [];
-  notificaciones: Notificacion[] = []; publicaciones: Publicacion[] = []; revisiones: RevisionPendiente[] = [];
-  noLeidas = 0; totalUsuarios = 0; operacionesSamActivas = 0; cargando = true; avisos: string[] = [];
-
-  get rol(): string { return this.user?.rol ?? ''; }
-  get estudiante(): boolean { return this.rol === 'ESTUDIANTE'; }
-  get docente(): boolean { return this.rol === 'DOCENTE'; }
-  get admin(): boolean { return this.rol === 'ADMINISTRADOR'; }
-  get proyectosActivos(): number { return this.proyectos.filter(proyecto => proyecto.estado === 'ACTIVO').length; }
-  get ordenesEnProceso(): number { return this.ordenes.filter(orden => orden.estado === 'EN_PROCESO').length; }
-  get versionesFinalizadas(): number { return this.versiones.filter(version => version.estado === 'FINALIZADA').length; }
-  get recientes(): Proyecto[] { return this.proyectos.slice(0, 4); }
-  get ordenesRecientes(): OrdenProduccion[] { return this.ordenes.slice(0, 4); }
-  get publicacionesRecientes(): Publicacion[] { return this.publicaciones.slice(0, 3); }
-  get notificacionesRecientes(): Notificacion[] { return this.notificaciones.slice(0, 4); }
-
-  ngOnInit(): void { this.cargarBase(); }
-
-  private cargarBase(): void {
-    this.cargando = true;
-    this.notificacionesService.contador().subscribe({ next: value => this.noLeidas = value.count, error: () => this.fallo('No fue posible cargar las notificaciones.') });
-    this.notificacionesService.listar().subscribe({ next: value => this.notificaciones = value, error: () => this.fallo('No fue posible cargar las notificaciones recientes.') });
-    this.portal.listar({ estado: 'PUBLICADA' }).subscribe({ next: value => this.publicaciones = value, error: () => this.fallo('No fue posible cargar las publicaciones recientes.') });
-    this.proyectosService.list().subscribe({ next: value => { this.proyectos = value; this.cargarVersiones(value); this.cargando = false; }, error: () => { this.fallo('No fue posible cargar los proyectos.'); this.cargando = false; } });
-    this.produccion.listarOrdenes().subscribe({ next: value => this.ordenes = value, error: () => this.fallo('No fue posible cargar las órdenes de producción.') });
-    if (this.docente) this.produccion.listarRevisionEtapas().subscribe({ next: value => this.revisiones = value, error: () => this.fallo('No fue posible cargar las revisiones pendientes.') });
-    if (this.admin) this.cargarAdmin();
-  }
-
-  private cargarVersiones(proyectos: Proyecto[]): void {
-    for (const proyecto of proyectos.slice(0, 6)) {
-      this.costeo.listarVersiones(proyecto.id).subscribe({ next: versions => this.versiones = [...this.versiones, ...versions.map(version => ({ ...version, proyectoNombre: proyecto.nombre }))].sort((a, b) => Number(b.id) - Number(a.id)).slice(0, 6), error: () => this.fallo(`No fue posible cargar el costeo de ${proyecto.nombre}.`) });
-    }
-  }
-
-  private cargarAdmin(): void {
-    this.administracion.users({ page: '1', limit: '1' }).subscribe({ next: value => this.totalUsuarios = value.total, error: () => this.fallo('No fue posible cargar el total de usuarios.') });
-    this.catalogos.listar('operaciones-sam', { estado: 'ACTIVO' }).subscribe({ next: value => this.operacionesSamActivas = value.length, error: () => this.fallo('No fue posible cargar las operaciones SAM.') });
-  }
-
-  private fallo(mensaje: string): void { if (!this.avisos.includes(mensaje)) this.avisos.push(mensaje); }
-}
+interface VersionReciente extends VersionCosteo { proyectoNombre:string; }
+@Component({selector:'app-dashboard',standalone:true,imports:[CommonModule,RouterLink],templateUrl:'./dashboard.component.html',styleUrls:['./dashboard.component.scss']})
+export class DashboardComponent implements OnInit,OnDestroy {private readonly auth=inject(AuthService);private readonly proyectosService=inject(ProyectosService);private readonly costeo=inject(CosteoService);private readonly produccion=inject(ProduccionService);private readonly notificacionesService=inject(NotificacionesService);private readonly portal=inject(PortalAcademicoService);private readonly catalogos=inject(CatalogosService);private readonly administracion=inject(AdministracionService);readonly user=this.auth.user;proyectos:Proyecto[]=[];versiones:VersionReciente[]=[];ordenes:OrdenProduccion[]=[];notificaciones:Notificacion[]=[];publicaciones:Publicacion[]=[];revisiones:RevisionPendiente[]=[];noLeidas=0;imagenesPortal=new Map<string,string>();totalUsuarios=0;operacionesSamActivas=0;cargando=true;avisos:string[]=[];get rol(){return this.user?.rol??'';}get estudiante(){return this.rol==='ESTUDIANTE';}get docente(){return this.rol==='DOCENTE';}get admin(){return this.rol==='ADMINISTRADOR';}get proyectosActivos(){return this.proyectos.filter(p=>p.estado==='ACTIVO').length;}get ordenesEnProceso(){return this.ordenes.filter(o=>o.estado==='EN_PROCESO').length;}get versionesFinalizadas(){return this.versiones.filter(v=>v.estado==='FINALIZADA').length;}get recientes(){return this.proyectos.slice(0,4);}get ordenesRecientes(){return this.ordenes.slice(0,4);}get publicacionesRecientes(){return this.publicaciones.slice(0,3);}get notificacionesRecientes(){return this.notificaciones.slice(0,4);}ngOnInit(){this.cargarBase();}ngOnDestroy(){this.imagenesPortal.forEach(url=>URL.revokeObjectURL(url));}private cargarBase(){this.cargando=true;this.notificacionesService.contador().subscribe({next:v=>this.noLeidas=v.count,error:()=>this.fallo('No fue posible cargar las notificaciones.')});this.notificacionesService.listar().subscribe({next:v=>this.notificaciones=v,error:()=>this.fallo('No fue posible cargar las notificaciones recientes.')});this.portal.listar({estado:'PUBLICADA'}).subscribe({next:v=>{this.publicaciones=v;v.filter(p=>p.tieneImagen).slice(0,3).forEach(p=>this.portal.imagen(p.id).subscribe({next:b=>this.imagenesPortal.set(p.id,URL.createObjectURL(b))}));},error:()=>this.fallo('No fue posible cargar las publicaciones recientes.')});this.proyectosService.list().subscribe({next:v=>{this.proyectos=v;this.cargarVersiones(v);this.cargando=false;},error:()=>{this.fallo('No fue posible cargar los proyectos.');this.cargando=false;}});this.produccion.listarOrdenes().subscribe({next:v=>this.ordenes=v,error:()=>this.fallo('No fue posible cargar las órdenes de producción.')});if(this.docente)this.produccion.listarRevisionEtapas().subscribe({next:v=>this.revisiones=v,error:()=>this.fallo('No fue posible cargar las revisiones pendientes.')});if(this.admin)this.cargarAdmin();}private cargarVersiones(ps:Proyecto[]){for(const p of ps.slice(0,6))this.costeo.listarVersiones(p.id).subscribe({next:vs=>this.versiones=[...this.versiones,...vs.map(v=>({...v,proyectoNombre:p.nombre}))].sort((a,b)=>Number(b.id)-Number(a.id)).slice(0,6),error:()=>this.fallo(`No fue posible cargar el costeo de ${p.nombre}.`)});}private cargarAdmin(){this.administracion.users({page:'1',limit:'1'}).subscribe({next:v=>this.totalUsuarios=v.total,error:()=>this.fallo('No fue posible cargar el total de usuarios.')});this.catalogos.listar('operaciones-sam',{estado:'ACTIVO'}).subscribe({next:v=>this.operacionesSamActivas=v.length,error:()=>this.fallo('No fue posible cargar las operaciones SAM.')});}private fallo(m:string){if(!this.avisos.includes(m))this.avisos.push(m);}}
