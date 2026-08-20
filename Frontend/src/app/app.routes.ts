@@ -22,7 +22,7 @@ export const routes: Routes = [
     { path: 'reportes', loadChildren: () => import('./features/reportes/reportes.routes').then((routes) => routes.REPORTES_ROUTES) },
     { path: 'ficha-diseno', loadChildren: () => import('./features/ficha-diseno/ficha-diseno.routes').then((routes) => routes.FICHA_DISENO_ROUTES) },
     { path: 'proyectos/:proyectoId/ficha-diseno', loadComponent: () => import('./features/ficha-diseno/ficha-diseno.component').then(component => component.FichaDisenoComponent) },
-    { path: 'ficha-tecnica', ...placeholder('Ficha técnica') },
+    { path: 'ficha-tecnica', redirectTo: 'reportes', pathMatch: 'full' },
     { path: 'auditoria', canActivate: [AdminGuard], loadComponent: () => import('./features/auditoria/auditoria.component').then(component => component.AuditoriaComponent) },
     { path: 'usuarios', canActivateChild: [AdminGuard], loadChildren: () => import('./features/usuarios/usuarios.routes').then(r => r.USUARIOS_ROUTES) }, { path: 'catalogos', loadChildren: () => import('./features/catalogos/catalogos.routes').then(r => r.CATALOGOS_ROUTES) }, { path: 'configuracion', loadChildren: () => import('./features/configuracion/configuracion.routes').then(r => r.CONFIGURACION_ROUTES) },
     { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
