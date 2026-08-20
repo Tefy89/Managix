@@ -1,0 +1,21 @@
+<section class="page">
+  <header><div><p>Administración</p><h1>Auditoría del sistema</h1><span>Consulta el historial de acciones registradas en MANAGIX.</span></div></header>
+  <form class="filters" (ngSubmit)="cargar(1)">
+    <input [(ngModel)]="filtros.modulo" name="modulo" placeholder="Módulo">
+    <select [(ngModel)]="filtros.accion" name="accion"><option value="">Todas las acciones</option><option *ngFor="let accion of acciones" [value]="accion">{{accion}}</option></select>
+    <input [(ngModel)]="filtros.usuarioId" name="usuarioId" placeholder="ID de usuario">
+    <input [(ngModel)]="filtros.entidad" name="entidad" placeholder="Entidad">
+    <input [(ngModel)]="filtros.fechaDesde" name="fechaDesde" type="date" aria-label="Fecha desde">
+    <input [(ngModel)]="filtros.fechaHasta" name="fechaHasta" type="date" aria-label="Fecha hasta">
+    <input class="search" [(ngModel)]="filtros.search" name="search" placeholder="Buscar descripción, usuario o correo">
+    <button type="submit">Filtrar</button><button type="button" class="secondary" (click)="limpiar()">Limpiar filtros</button>
+  </form>
+  <p class="feedback" *ngIf="error">{{error}}</p>
+  <section class="history"><div class="history-title"><h2>Historial</h2><span>{{total}} registros</span></div>
+    <p class="empty" *ngIf="!cargando&&!registros.length">No se encontraron registros de auditoría con los filtros seleccionados.</p>
+    <div class="table" *ngIf="registros.length"><div class="row head"><b>Fecha</b><b>Usuario</b><b>Módulo</b><b>Acción</b><b>Entidad</b><b>Descripción</b><b></b></div><div class="row" *ngFor="let r of registros"><span>{{r.createdAt|date:'dd/MM/yyyy HH:mm'}}</span><span>{{r.usuario?.nombre??'Sistema'}}<small *ngIf="r.usuario?.correo">{{r.usuario?.correo}}</small></span><span>{{r.modulo}}</span><span><i class="badge" [class]="r.accion.toLowerCase()">{{r.accion}}</i></span><span>{{r.entidad}}<small *ngIf="r.entidadId">#{{r.entidadId}}</small></span><span>{{r.descripcion??'Sin descripción.'}}</span><button (click)="ver(r)">Ver detalle</button></div></div>
+    <div class="cards" *ngIf="registros.length"><article *ngFor="let r of registros"><div><i class="badge" [class]="r.accion.toLowerCase()">{{r.accion}}</i><time>{{r.createdAt|date:'dd/MM/yyyy HH:mm'}}</time></div><strong>{{r.modulo}} · {{r.entidad}}{{r.entidadId?' #'+r.entidadId:''}}</strong><span>{{r.usuario?.nombre??'Sistema'}}</span><p>{{r.descripcion??'Sin descripción.'}}</p><button (click)="ver(r)">Ver detalle</button></article></div>
+    <div class="pagination"><button [disabled]="!puedeAnterior" (click)="cargar(pagina-1)">Anterior</button><span>Página {{pagina}} de {{paginas}}</span><button [disabled]="!puedeSiguiente" (click)="cargar(pagina+1)">Siguiente</button></div>
+  </section>
+</section>
+<div class="modal" *ngIf="detalle" (click)="detalle=undefined"><section (click)="$event.stopPropagation()"><button class="close" (click)="detalle=undefined">×</button><h2>Detalle de auditoría</h2><dl><dt>Fecha</dt><dd>{{detalle.createdAt|date:'dd/MM/yyyy HH:mm:ss'}}</dd><dt>Usuario</dt><dd>{{detalle.usuario?.nombre??'Sistema'}}<br><small>{{detalle.usuario?.correo}}</small></dd><dt>Módulo</dt><dd>{{detalle.modulo}}</dd><dt>Acción</dt><dd><i class="badge" [class]="detalle.accion.toLowerCase()">{{detalle.accion}}</i></dd><dt>Entidad</dt><dd>{{detalle.entidad}} {{detalle.entidadId?'#'+detalle.entidadId:''}}</dd><dt>Descripción</dt><dd>{{detalle.descripcion??'Sin descripción.'}}</dd><dt *ngIf="detalle.metadata">Metadatos</dt><dd *ngIf="detalle.metadata"><pre>{{detalle.metadata|json}}</pre></dd></dl></section></div>
