@@ -1,12 +1,12 @@
 # Recursos visuales locales
 
-Los dashboards de ESTUDIANTE, DOCENTE y ADMINISTRADOR se construyen con componentes Angular y estilos CSS; sus mockups son referencias de diseño y no son assets de la aplicación.
+Los dashboards de ESTUDIANTE, DOCENTE y ADMINISTRADOR se construyen con componentes Angular y estilos CSS; sus mockups son referencias de diseÃ±o y no son recursos de la aplicaciÃ³n.
 
-Cuando se incorporen recursos que sí se muestren en la interfaz, deben almacenarse localmente en:
+Los recursos que se muestran en la interfaz se almacenan localmente en:
 
-- `images/branding/` para los logos oficiales MANAGIX y Yavirac.
-- `images/login/` para una imagen oficial de diseño de modas, si se aprueba su uso en el login.
-- `images/dashboard/` para futuras imágenes reales que requiera un módulo.
-- `icons/` para iconografía local propia.
+- `images/institution/` para el logo institucional.
+- `images/login/` para la imagen visual del inicio de sesiÃ³n.
+- `images/portal/` para recursos editoriales del Portal AcadÃ©mico.
+- `icons/` para iconografÃ­a local propia.
 
 No se usan URLs externas para recursos visuales esenciales.

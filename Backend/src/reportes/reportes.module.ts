@@ -14,7 +14,8 @@ import { CotizacionPdfService } from './pdf/cotizacion-pdf.service';
 import { OrdenProduccionPdfService } from './pdf/orden-produccion-pdf.service';
 import { FichaTecnicaPdfService } from './pdf/ficha-tecnica-pdf.service';
 import { ReporteProyectoPdfService } from './pdf/reporte-proyecto-pdf.service';
+import { FichasManagixPdfService } from './pdf/fichas-managix-pdf.service';
 import { ReportesController } from './reportes.controller';
 import { ReportesService } from './reportes.service';
-@Module({ imports: [TypeOrmModule.forFeature([ReporteGenerado, VersionCosteo, VersionCosteoMedida, VersionCosteoTela, VersionCosteoInsumo, Proyecto, TipoPrenda, Usuario, OrdenProduccion, Auditoria])], controllers: [ReportesController], providers: [ReportesService, CotizacionPdfService, OrdenProduccionPdfService, FichaTecnicaPdfService, ReporteProyectoPdfService] })
+@Module({ imports: [TypeOrmModule.forFeature([ReporteGenerado, VersionCosteo, VersionCosteoMedida, VersionCosteoTela, VersionCosteoInsumo, Proyecto, TipoPrenda, Usuario, OrdenProduccion, Auditoria])], controllers: [ReportesController], providers: [ReportesService, CotizacionPdfService, OrdenProduccionPdfService, FichaTecnicaPdfService, ReporteProyectoPdfService, FichasManagixPdfService] })
 export class ReportesModule {}

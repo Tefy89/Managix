@@ -19,6 +19,11 @@
           "options": {
             "outputPath": "dist/managix-frontend",
             "index": "src/index.html",
+            "security": {
+              "allowedHosts": [
+                "*.trycloudflare.com"
+              ]
+            },
             "browser": "src/main.ts",
             "polyfills": [
               "zone.js"
@@ -72,6 +77,12 @@
         },
         "serve": {
           "builder": "@angular-devkit/build-angular:dev-server",
+          "options": {
+            "allowedHosts": [
+              "flights-pearl-paint-deposits.trycloudflare.com"
+            ],
+            "proxyConfig": "proxy.conf.json"
+          },
           "configurations": {
             "production": {
               "buildTarget": "managix-frontend:build:production"

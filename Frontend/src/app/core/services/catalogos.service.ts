@@ -3,7 +3,7 @@ import { Observable } from 'rxjs';
 import { ApiService } from './api.service';
 
 export type EstadoCatalogo = 'ACTIVO' | 'INACTIVO';
-export type CatalogoClave = 'tipos-prenda' | 'medidas' | 'telas' | 'insumos' | 'reglas-consumo-tela' | 'operaciones-sam';
+export type CatalogoClave = 'tipos-prenda' | 'medidas' | 'telas' | 'insumos' | 'reglas-consumo-tela' | 'operaciones-sam' | 'maquinarias';
 export interface CatalogoBase { id: string; codigo?: string; nombre: string; descripcion?: string | null; estado: EstadoCatalogo; }
 export interface TipoPrenda extends CatalogoBase { codigo: string; }
 export interface Medida extends CatalogoBase { codigo: string; unidad: 'cm'; }
@@ -11,6 +11,7 @@ export interface Tela extends CatalogoBase { codigo: string; anchoCm: string | n
 export interface Insumo extends CatalogoBase { codigo: string; unidadMedida: string; precioUnitario: string | number; }
 export interface ReglaConsumoTela extends CatalogoBase { tipoPrendaId: string; tipoCalculo: string; parametrosCalculo: Record<string, unknown>; }
 export interface OperacionSamCatalogo extends CatalogoBase { codigo: string; samReferencial: string | number; }
+export interface MaquinariaCatalogo extends CatalogoBase { codigo: string; factorConsumoHilo: string | number; }
 export interface PrendaMedida { relacion_id: string; medida_id: string; codigo: string; nombre: string; unidad: string; obligatorio: boolean; orden_visualizacion: number; estado: EstadoCatalogo; }
 export interface CrearRelacion { medidaId: string; ordenVisualizacion: number; obligatorio: boolean; }
 export interface EditarRelacion { ordenVisualizacion?: number; obligatorio?: boolean; }

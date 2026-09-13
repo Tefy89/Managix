@@ -5,7 +5,7 @@ export type OrdenProduccionPdfData = {
   codigo: string; proyecto: string; estudiante: string; prenda: string; version: number; estado: string;
   createdAt: Date; fechaInicio: Date | null; fechaFin: Date | null;
   resumen: { subtotalMateriales: string; valorManoObra: string; valorGanancia: string; total: string };
-  etapas: Array<{ orden: number; codigo: string; nombre: string; estado: string; inicio: Date | null; fin: Date | null; observacion: string | null; evidencias: number; revision: { resultado: string; docente: string; fecha: Date; observacion: string | null } | null }>;
+  etapas: Array<{ orden: number; codigo: string; nombre: string; estado: string; inicio: Date | null; fin: Date | null; observacion: string | null; evidencias: number; evidenciaArchivos: Array<{ nombre: string; descripcion: string | null; path: string | null }>; revision: { resultado: string; docente: string; fecha: Date; observacion: string | null } | null }>;
 };
 
 @Injectable()
@@ -15,7 +15,7 @@ export class OrdenProduccionPdfService {
     const chunks: Buffer[] = []; doc.on('data', (chunk: Buffer) => chunks.push(chunk));
     const fin = new Promise<Buffer>((resolve, reject) => { doc.on('end', () => resolve(Buffer.concat(chunks))); doc.on('error', reject); });
     const date = (value: Date | null) => value ? new Date(value).toLocaleDateString('es-EC') : 'No registrada';
-    const money = (value: string) => `$${Number(value).toFixed(2)}`;
+    const money = (value: string) => `$${new Intl.NumberFormat('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2, useGrouping: false }).format(Number(value))}`;
     const line = (label: string, value: string) => { this.ensure(doc, 18); const y = doc.y; doc.font('Helvetica-Bold').fontSize(9).fillColor('#1b4e75').text(label, 46, y, { continued: true }); doc.font('Helvetica').fillColor('#26364a').text(` ${value}`); doc.x = 46; };
     const section = (title: string) => { this.ensure(doc, 30); doc.moveDown(.7).font('Helvetica-Bold').fontSize(12).fillColor('#0b4f82').text(title); doc.moveTo(46, doc.y + 4).lineTo(549, doc.y + 4).strokeColor('#f28c28').stroke(); doc.moveDown(.45); };
     doc.font('Helvetica-Bold').fontSize(22).fillColor('#0b4f82').text('MANAGIX');
@@ -31,7 +31,7 @@ export class OrdenProduccionPdfService {
     section('ETAPAS DE PRODUCCIÓN');
     for (const etapa of data.etapas) {
       this.ensure(doc, 85); const y = doc.y; doc.rect(46, y, 503, 20).fillAndStroke('#0b4f82', '#0b4f82'); doc.font('Helvetica-Bold').fontSize(9).fillColor('#ffffff').text(`${etapa.orden}. ${etapa.codigo} - ${etapa.nombre}`, 52, y + 5, { width: 490, ellipsis: true }); doc.y = y + 25;
-      line('Estado productivo:', etapa.estado); line('Inicio:', date(etapa.inicio)); line('Fin:', date(etapa.fin)); line('Evidencias:', String(etapa.evidencias)); if (etapa.observacion) line('Observación del estudiante:', etapa.observacion);
+      line('Estado productivo:', etapa.estado); line('Inicio:', date(etapa.inicio)); line('Fin:', date(etapa.fin)); line('Evidencias:', String(etapa.evidencias)); if (etapa.observacion) line('Observación del estudiante:', etapa.observacion); for (const evidencia of etapa.evidenciaArchivos) { this.ensure(doc, 224); doc.font('Helvetica-Bold').fontSize(8).fillColor('#1b4e75').text(`Evidencia: ${evidencia.nombre}`,46,doc.y,{width:503}); if (evidencia.path) { try { doc.image(evidencia.path,46,doc.y+6,{fit:[503,180],align:'center',valign:'center'}); doc.y+=192; } catch { line('Archivo de evidencia:', 'No pudo visualizarse.'); } } if (evidencia.descripcion) line('Descripción de evidencia:', evidencia.descripcion); }
       if (etapa.revision) { line('Última revisión docente:', etapa.revision.resultado); line('Docente:', etapa.revision.docente); line('Fecha de revisión:', date(etapa.revision.fecha)); if (etapa.revision.observacion) line('Observación docente:', etapa.revision.observacion); } else line('Última revisión docente:', 'SIN REVISAR');
       doc.moveDown(.25);
     }

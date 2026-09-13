@@ -4,10 +4,11 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { catchError, forkJoin, of, switchMap } from 'rxjs';
 import { ProyectosService, Proyecto } from '../../core/services/proyectos.service';
 import { CosteoService, VersionCosteo } from '../../core/services/costeo.service';
+import { PresentacionNumeroPipe } from '../../shared/pipes/presentacion-numero.pipe';
 import { AuthService } from '../../core/services/auth.service';
 
 interface ProyectoCosteo { proyecto: Proyecto; versiones: VersionCosteo[]; }
-@Component({ selector: 'app-costeo', standalone: true, imports: [CommonModule, RouterLink], templateUrl: './costeo.component.html', styleUrls: ['./costeo.component.scss'] })
+@Component({ selector: 'app-costeo', standalone: true, imports: [CommonModule, RouterLink, PresentacionNumeroPipe], templateUrl: './costeo.component.html', styleUrls: ['./costeo.component.scss'] })
 export class CosteoComponent implements OnInit {
   private readonly proyectosService = inject(ProyectosService); private readonly costeoService = inject(CosteoService); private readonly route = inject(ActivatedRoute); private readonly router = inject(Router); private readonly auth = inject(AuthService);
   proyectos: ProyectoCosteo[] = []; cargando = true; mensaje = ''; proyectoSeleccionado = '';

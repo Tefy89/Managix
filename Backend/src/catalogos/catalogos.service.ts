@@ -54,7 +54,7 @@ export class CatalogosService {
 
   async list(name: CatalogName, filters: Record<string, string>): Promise<CatalogRecord[]> {
     const where = filters.estado ? { estado: filters.estado as EstadoCatalogo } : {};
-    return this.repo(name).find({ where });
+    return this.repo(name).find({ where, order: { nombre: 'ASC' } });
   }
 
   async one(name: CatalogName, id: string): Promise<CatalogRecord> {

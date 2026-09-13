@@ -1,0 +1,34 @@
+# Dependencias
+**/node_modules/
+
+# Artefactos de compilación y cobertura
+Backend/dist/
+Frontend/dist/
+**/coverage/
+Frontend/.angular/
+
+# Variables de entorno (se conservan los ejemplos seguros)
+**/.env
+**/.env.*
+!**/.env.example
+
+# Archivos de ejecución, cargas y salidas generadas
+Backend/uploads/
+Backend/output/
+Backend/tmp/
+*.log
+*.tmp
+*.temp
+*.bak
+*.old
+*.orig
+*.swp
+*~
+*.backup
+*.dump
+
+# Sistema operativo e IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

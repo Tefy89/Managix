@@ -51,6 +51,11 @@ export class ProduccionService {
         const codigo = await this.siguienteCodigo(manager);
         const siguienteId = await repositorio.createQueryBuilder().select('COALESCE(MAX(id),0)+1', 'id').getRawOne<{ id: string }>();
         orden = await repositorio.save(repositorio.create({ id: siguienteId?.id ?? '0', versionCosteoId: versionId, codigo, estado: EstadoOrdenProduccion.PENDIENTE, fechaInicio: null, fechaFin: null, observacion: dto.observacion?.trim() || null }));
+        const catalogoEtapas = await manager.getRepository(EtapaProduccion).find({ where: { estado: 'ACTIVO' }, order: { orden: 'ASC' } });
+        if (catalogoEtapas.length !== 6) throw new BadRequestException('La configuración de producción debe contener las seis etapas oficiales activas.');
+        const ultimaEtapa = await manager.getRepository(OrdenProduccionEtapa).createQueryBuilder('etapa').select('COALESCE(MAX(etapa.id),0)', 'id').getRawOne<{ id: string }>();
+        let etapaId = Number(ultimaEtapa?.id ?? 0);
+        for (const etapa of catalogoEtapas) { etapaId += 1; await manager.getRepository(OrdenProduccionEtapa).save(manager.getRepository(OrdenProduccionEtapa).create({ id: String(etapaId), ordenProduccionId: orden.id, etapaProduccionId: etapa.id, codigoEtapaAplicado: etapa.codigo, nombreEtapaAplicado: etapa.nombre, ordenAplicado: etapa.orden, estado: EstadoOrdenProduccionEtapa.PENDIENTE, fechaInicio: null, fechaFin: null, observacionEstudiante: null })); }
         await this.auditar(manager, usuario.sub, orden.id, orden.codigo);
       });
     } catch (error: unknown) {
@@ -93,20 +98,13 @@ export class ProduccionService {
       await manager.query('SELECT pg_advisory_xact_lock($1)', [906002]);
       const ordenes = manager.getRepository(OrdenProduccion);
       const lineas = manager.getRepository(OrdenProduccionEtapa);
-      const catalogo = manager.getRepository(EtapaProduccion);
       const orden = await ordenes.findOneBy({ id });
       if (!orden) throw new NotFoundException('Orden de producción no encontrada.');
       if (orden.estado !== EstadoOrdenProduccion.PENDIENTE) throw new BadRequestException('Solo órdenes PENDIENTE pueden iniciarse.');
-      const existentes = await lineas.countBy({ ordenProduccionId: id });
-      if (existentes > 0) throw new ConflictException('La orden ya tiene etapas preparadas.');
-      const etapas = await catalogo.find({ where: { estado: 'ACTIVO' }, order: { orden: 'ASC' } });
-      if (!etapas.length) throw new BadRequestException('No existen etapas activas para iniciar la orden.');
-      const siguiente = await lineas.createQueryBuilder().select('COALESCE(MAX(id),0)', 'id').getRawOne<{ id: string }>();
-      let siguienteId = Number(siguiente?.id ?? 0); const ahora = new Date();
-      for (const [indice, etapa] of etapas.entries()) {
-        siguienteId += 1;
-        await lineas.save(lineas.create({ id: String(siguienteId), ordenProduccionId: id, etapaProduccionId: etapa.id, codigoEtapaAplicado: etapa.codigo, nombreEtapaAplicado: etapa.nombre, ordenAplicado: etapa.orden, estado: indice === 0 ? EstadoOrdenProduccionEtapa.EN_PROCESO : EstadoOrdenProduccionEtapa.PENDIENTE, fechaInicio: indice === 0 ? ahora : null, fechaFin: null, observacionEstudiante: null }));
-      }
+      const etapasPreparadas = await lineas.find({ where: { ordenProduccionId: id }, order: { ordenAplicado: 'ASC' } });
+      if (etapasPreparadas.length !== 6) throw new BadRequestException('La orden no tiene las seis etapas oficiales preparadas.');
+      const primera = etapasPreparadas[0]; if (primera.estado !== EstadoOrdenProduccionEtapa.PENDIENTE) throw new BadRequestException('La primera etapa no está disponible.');
+      const ahora = new Date(); primera.estado = EstadoOrdenProduccionEtapa.EN_PROCESO; primera.fechaInicio = ahora; await lineas.save(primera);
       orden.estado = EstadoOrdenProduccion.EN_PROCESO; orden.fechaInicio = ahora; orden.fechaFin = null;
       iniciada = await ordenes.save(orden);
       await this.auditarActualizacion(manager, usuario.sub, id, 'orden_produccion', 'Orden de producción iniciada.');
@@ -134,7 +132,7 @@ export class ProduccionService {
     return this.etapasOrden.createQueryBuilder('etapa')
       .where('etapa.orden_produccion_id = :ordenId', { ordenId })
       .andWhere('etapa.estado = :pendiente', { pendiente: EstadoOrdenProduccionEtapa.PENDIENTE })
-      .andWhere(`NOT EXISTS (SELECT 1 FROM orden_produccion_etapa previa WHERE previa.orden_produccion_id = etapa.orden_produccion_id AND previa.orden_aplicado < etapa.orden_aplicado AND previa.estado <> :completada)`, { completada: EstadoOrdenProduccionEtapa.COMPLETADA })
+      .andWhere(`NOT EXISTS (SELECT 1 FROM orden_produccion_etapa previa WHERE previa.orden_produccion_id = etapa.orden_produccion_id AND previa.orden_aplicado < etapa.orden_aplicado AND previa.estado <> :completada)`, { completada: EstadoOrdenProduccionEtapa.APROBADA })
       .orderBy('etapa.orden_aplicado', 'ASC').getOne();
   }
   private async ordenAccesible(id: string, usuario: UsuarioAutenticado): Promise<OrdenProduccion> { const orden = await this.ordenes.findOneBy({ id }); if (!orden) throw new NotFoundException('Orden de producción no encontrada.'); await this.versionAccesible(orden.versionCosteoId, usuario); return orden; }
@@ -190,29 +188,24 @@ export class ProduccionService {
   }
 
   async completarEtapa(ordenId: string, etapaId: string, usuario: UsuarioAutenticado) {
-    if (usuario.rol !== 'ESTUDIANTE') throw new ForbiddenException('Solo estudiantes pueden completar etapas.');
+    if (usuario.rol !== 'ESTUDIANTE') throw new ForbiddenException('Solo estudiantes pueden enviar etapas a revisión.');
     await this.ordenAccesible(ordenId, usuario);
     let resultado!: OrdenProduccionEtapa;
     await this.dataSource.transaction(async manager => {
       await manager.query('SELECT pg_advisory_xact_lock($1)', [906003]);
       const ordenes = manager.getRepository(OrdenProduccion); const etapas = manager.getRepository(OrdenProduccionEtapa); const evidencias = manager.getRepository(EvidenciaEtapa);
-      const orden = await ordenes.findOneBy({ id: ordenId }); if (!orden) throw new NotFoundException('Orden de producción no encontrada.');
-      if (orden.estado !== EstadoOrdenProduccion.EN_PROCESO) throw new BadRequestException('La orden debe estar EN_PROCESO.');
+      const orden = await ordenes.findOneBy({ id: ordenId }); if (!orden || orden.estado !== EstadoOrdenProduccion.EN_PROCESO) throw new BadRequestException('La orden debe estar EN_PROCESO.');
       const etapa = await etapas.findOneBy({ id: etapaId, ordenProduccionId: ordenId }); if (!etapa) throw new NotFoundException('Etapa de producción no encontrada.');
-      if (etapa.estado !== EstadoOrdenProduccionEtapa.EN_PROCESO) throw new BadRequestException('Solo la etapa EN_PROCESO puede completarse.');
-      const actual = await etapas.createQueryBuilder('etapa').where('etapa.orden_produccion_id=:ordenId', { ordenId }).andWhere('etapa.estado=:estado', { estado: EstadoOrdenProduccionEtapa.EN_PROCESO }).orderBy('etapa.orden_aplicado', 'ASC').getOne();
-      if (!actual || actual.id !== etapaId) throw new BadRequestException('No se puede completar una etapa fuera de secuencia.');
-      if (await evidencias.countBy({ ordenProduccionEtapaId: etapaId }) < 1) throw new BadRequestException('Debe registrar al menos una evidencia fotográfica para completar la etapa.');
-      const ahora = new Date(); etapa.estado = EstadoOrdenProduccionEtapa.COMPLETADA; etapa.fechaFin = ahora; resultado = await etapas.save(etapa);
-      const siguiente = await etapas.createQueryBuilder('etapa').where('etapa.orden_produccion_id=:ordenId', { ordenId }).andWhere('etapa.orden_aplicado > :orden', { orden: etapa.ordenAplicado }).orderBy('etapa.orden_aplicado', 'ASC').getOne();
-      if (siguiente) { if (siguiente.estado !== EstadoOrdenProduccionEtapa.PENDIENTE) throw new BadRequestException('La siguiente etapa no está disponible.'); siguiente.estado = EstadoOrdenProduccionEtapa.EN_PROCESO; siguiente.fechaInicio = ahora; await etapas.save(siguiente); }
-      else { orden.estado = EstadoOrdenProduccion.FINALIZADA; orden.fechaFin = ahora; await ordenes.save(orden); await this.auditarActualizacion(manager, usuario.sub, orden.id, 'orden_produccion', 'Orden de producción finalizada.');
-        await this.crearNotificacion(manager, usuario.sub, 'Producción finalizada', 'Se finalizó la orden de producción ' + orden.codigo + '.', TipoNotificacion.ORDEN_PRODUCCION, 'ORDEN_PRODUCCION', orden.id); }
-      await this.auditarActualizacion(manager, usuario.sub, etapa.id, 'orden_produccion_etapa', 'Etapa completada por el estudiante.');
+      if (![EstadoOrdenProduccionEtapa.EN_PROCESO, EstadoOrdenProduccionEtapa.OBSERVADA].includes(etapa.estado)) throw new BadRequestException('Solo una etapa EN_PROCESO u OBSERVADA puede enviarse a revisión.');
+      const anterioresSinAprobar = await etapas.createQueryBuilder('etapa').where('etapa.orden_produccion_id=:ordenId', { ordenId }).andWhere('etapa.orden_aplicado < :orden', { orden: etapa.ordenAplicado }).andWhere('etapa.estado <> :aprobada', { aprobada: EstadoOrdenProduccionEtapa.APROBADA }).getCount();
+      if (anterioresSinAprobar > 0) throw new BadRequestException('No se puede enviar una etapa fuera de secuencia.');
+      if (await evidencias.countBy({ ordenProduccionEtapaId: etapaId }) < 1) throw new BadRequestException('Debe registrar al menos una evidencia fotográfica antes de enviar la etapa a revisión.');
+      etapa.estado = EstadoOrdenProduccionEtapa.EN_REVISION; etapa.fechaFin = new Date(); resultado = await etapas.save(etapa);
+      await this.auditarActualizacion(manager, usuario.sub, etapa.id, 'orden_produccion_etapa', 'Etapa enviada a revisión docente.');
+      await this.notificarDocentesRevision(manager, ordenId, etapa);
     });
     return this.respuestaEtapa(resultado);
   }
-
   private async etapaEditableParaEvidencia(ordenId: string, etapaId: string, usuario: UsuarioAutenticado): Promise<OrdenProduccionEtapa> {
     const etapa = await this.etapa(ordenId, etapaId, usuario) as { id: string; estado: EstadoOrdenProduccionEtapa };
     if (![EstadoOrdenProduccionEtapa.EN_PROCESO, EstadoOrdenProduccionEtapa.OBSERVADA].includes(etapa.estado)) throw new BadRequestException('La etapa no permite evidencias en su estado actual.');
@@ -224,25 +217,27 @@ export class ProduccionService {
   private async auditarCreacion(manager: EntityManager, usuarioId: string, entidadId: string, entidad: string, descripcion: string): Promise<void> { const repositorio = manager.getRepository(Auditoria); const siguienteId = await repositorio.createQueryBuilder().select('COALESCE(MAX(id),0)+1', 'id').getRawOne<{ id: string }>(); await repositorio.save(repositorio.create({ id: siguienteId?.id ?? '0', usuarioId, modulo: 'PRODUCCION', accion: AccionAuditoria.CREAR, entidad, entidadId, descripcion, metadatos: null, direccionIp: null, userAgent: null })); }
   async crearRevision(ordenId: string, etapaId: string, dto: CreateRevisionEtapaDto, usuario: UsuarioAutenticado) {
     if (usuario.rol !== 'DOCENTE') throw new ForbiddenException('Solo docentes pueden registrar revisiones académicas.');
-    const etapa = await this.etapa(ordenId, etapaId, usuario) as { id: string; estado: EstadoOrdenProduccionEtapa };
-    if (etapa.estado !== EstadoOrdenProduccionEtapa.COMPLETADA) throw new BadRequestException('Solo se revisan etapas COMPLETADA.');
+    await this.etapa(ordenId, etapaId, usuario);
     if (dto.resultado === ResultadoRevision.OBSERVADA && !dto.observacion?.trim()) throw new BadRequestException('La observación es obligatoria para una revisión OBSERVADA.');
     let revision!: RevisionEtapa;
     await this.dataSource.transaction(async manager => {
+      const etapas = manager.getRepository(OrdenProduccionEtapa); const ordenes = manager.getRepository(OrdenProduccion);
+      const etapa = await etapas.findOneBy({ id: etapaId, ordenProduccionId: ordenId }); if (!etapa || etapa.estado !== EstadoOrdenProduccionEtapa.EN_REVISION) throw new BadRequestException('Solo se revisan etapas EN_REVISION.');
       const repositorio = manager.getRepository(RevisionEtapa); const siguiente = await repositorio.createQueryBuilder().select('COALESCE(MAX(id),0)+1', 'id').getRawOne<{ id: string }>();
       revision = await repositorio.save(repositorio.create({ id: siguiente?.id ?? '0', ordenProduccionEtapaId: etapa.id, docenteId: usuario.sub, resultadoRevision: dto.resultado, observacion: dto.observacion?.trim() || null }));
-      const accion = dto.resultado === ResultadoRevision.APROBADA ? AccionAuditoria.APROBAR : AccionAuditoria.OBSERVAR;
-      await this.auditarResultadoRevision(manager, usuario.sub, revision.id, accion, dto.resultado);
+      const aprobada = dto.resultado === ResultadoRevision.APROBADA; etapa.estado = aprobada ? EstadoOrdenProduccionEtapa.APROBADA : EstadoOrdenProduccionEtapa.OBSERVADA; if (!aprobada) etapa.fechaFin = null; await etapas.save(etapa);
+      if (aprobada) { const siguienteEtapa = await etapas.createQueryBuilder('siguiente').where('siguiente.orden_produccion_id=:ordenId',{ordenId}).andWhere('siguiente.orden_aplicado > :orden',{orden:etapa.ordenAplicado}).orderBy('siguiente.orden_aplicado','ASC').getOne(); if (siguienteEtapa) { if (siguienteEtapa.estado === EstadoOrdenProduccionEtapa.PENDIENTE) { siguienteEtapa.estado=EstadoOrdenProduccionEtapa.EN_PROCESO; siguienteEtapa.fechaInicio=new Date(); await etapas.save(siguienteEtapa); } } else { const pendientes = await etapas.count({ where: { ordenProduccionId: ordenId } }) - await etapas.count({ where: { ordenProduccionId: ordenId, estado: EstadoOrdenProduccionEtapa.APROBADA } }); if (pendientes === 0) { const orden = await ordenes.findOneBy({id:ordenId}); if(orden){orden.estado=EstadoOrdenProduccion.FINALIZADA;orden.fechaFin=new Date();await ordenes.save(orden);await this.auditarActualizacion(manager, usuario.sub, orden.id, 'orden_produccion', 'Orden de producción finalizada tras aprobación de las seis etapas.');} } } }
+      const accion = aprobada ? AccionAuditoria.APROBAR : AccionAuditoria.OBSERVAR; await this.auditarResultadoRevision(manager, usuario.sub, revision.id, accion, dto.resultado);
       const destinatario = await manager.query('SELECT p.estudiante_id AS estudiante_id, ope.nombre_etapa_aplicado AS etapa, p.nombre AS proyecto FROM orden_produccion_etapa ope JOIN orden_produccion o ON o.id=ope.orden_produccion_id JOIN version_costeo v ON v.id=o.version_costeo_id JOIN proyecto p ON p.id=v.proyecto_id WHERE ope.id=$1', [etapa.id]) as Array<{ estudiante_id: string; etapa: string; proyecto: string }>;
-      const contexto = destinatario[0]; if (contexto) { const aprobada = dto.resultado === ResultadoRevision.APROBADA; const mensaje = aprobada ? 'El docente aprobó la etapa ' + contexto.etapa + ' del proyecto ' + contexto.proyecto + '.' : 'El docente registró observaciones en la etapa ' + contexto.etapa + ' del proyecto ' + contexto.proyecto + '.'; await this.crearNotificacion(manager, contexto.estudiante_id, aprobada ? 'Etapa aprobada' : 'Etapa observada', mensaje, aprobada ? TipoNotificacion.ETAPA_APROBADA : TipoNotificacion.ETAPA_OBSERVADA, 'ORDEN_PRODUCCION_ETAPA', etapa.id); }
+      const contexto = destinatario[0]; if (contexto) { const mensaje = aprobada ? 'El docente aprobó la etapa ' + contexto.etapa + ' del proyecto ' + contexto.proyecto + '.' : 'El docente registró observaciones en la etapa ' + contexto.etapa + ' del proyecto ' + contexto.proyecto + '.'; await this.crearNotificacion(manager, contexto.estudiante_id, aprobada ? 'Etapa aprobada' : 'Etapa observada', mensaje, aprobada ? TipoNotificacion.ETAPA_APROBADA : TipoNotificacion.ETAPA_OBSERVADA, 'ORDEN_PRODUCCION_ETAPA', etapa.id); }
     });
     return this.respuestaRevision(revision, usuario);
   }
-  async revisionesEtapa(ordenId: string, etapaId: string, usuario: UsuarioAutenticado) { await this.etapa(ordenId, etapaId, usuario); const revisiones = await this.revisiones.find({ where: { ordenProduccionEtapaId: etapaId }, relations: { docente: true }, order: { createdAt: 'ASC' } }); return revisiones.map(revision => this.respuestaRevision(revision)); }
+  private async notificarDocentesRevision(manager: EntityManager, ordenId: string, etapa: OrdenProduccionEtapa): Promise<void> { const docentes = await manager.query("SELECT u.id FROM usuario u JOIN rol r ON r.id=u.rol_id WHERE r.nombre='DOCENTE' AND u.estado='ACTIVO'") as Array<{id:string}>; const contexto = await manager.query('SELECT p.nombre AS proyecto FROM orden_produccion o JOIN version_costeo v ON v.id=o.version_costeo_id JOIN proyecto p ON p.id=v.proyecto_id WHERE o.id=$1',[ordenId]) as Array<{proyecto:string}>; for (const docente of docentes) await this.crearNotificacion(manager, String(docente.id), 'Revisión de producción pendiente', 'La etapa ' + etapa.nombreEtapaAplicado + ' del proyecto ' + (contexto[0]?.proyecto ?? '') + ' fue enviada a revisión.', TipoNotificacion.REVISION_ETAPA, 'ORDEN_PRODUCCION_ETAPA', etapa.id); }  async revisionesEtapa(ordenId: string, etapaId: string, usuario: UsuarioAutenticado) { await this.etapa(ordenId, etapaId, usuario); const revisiones = await this.revisiones.find({ where: { ordenProduccionEtapaId: etapaId }, relations: { docente: true }, order: { createdAt: 'ASC' } }); return revisiones.map(revision => this.respuestaRevision(revision)); }
   async obtenerUltimaRevision(etapaId: string): Promise<RevisionEtapa | null> { return this.revisiones.findOne({ where: { ordenProduccionEtapaId: etapaId }, relations: { docente: true }, order: { createdAt: 'DESC', id: 'DESC' } }); }
   async listadoRevisiones(filters: ListRevisionEtapasDto, usuario: UsuarioAutenticado) {
     if (!['DOCENTE', 'ADMINISTRADOR'].includes(usuario.rol)) throw new ForbiddenException('No tiene permisos para consultar revisiones académicas.');
-    const params: unknown[] = []; const where = ["ope.estado='COMPLETADA'"];
+    const params: unknown[] = []; const where = ["ope.estado='EN_REVISION'"];
     if (filters.estudiante) { params.push(filters.estudiante); where.push(`p.estudiante_id=$${params.length}`); }
     if (filters.proyecto) { params.push(filters.proyecto); where.push(`p.id=$${params.length}`); }
     if (filters.estado === 'SIN_REVISAR') where.push('ultima.id IS NULL');
