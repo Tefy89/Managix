@@ -79,7 +79,7 @@
           "builder": "@angular-devkit/build-angular:dev-server",
           "options": {
             "allowedHosts": [
-              "flights-pearl-paint-deposits.trycloudflare.com"
+              "synthetic-fuel-cultural-design.trycloudflare.com"
             ],
             "proxyConfig": "proxy.conf.json"
           },
